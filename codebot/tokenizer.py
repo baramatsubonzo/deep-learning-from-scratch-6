@@ -1,3 +1,4 @@
+import pickle
 import regex as re
 from tqdm import tqdm
 from collections import defaultdict
@@ -26,10 +27,6 @@ def merge(ids, pair, new_id):
 def pretokenize(text):
     pattern = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
     return re.findall(pattern, text)
-
-# text = "Hello world! I'm fine."
-# pretokens = pretokenize(text)
-# print(pretokens)
 
 def train_bpe(input_text, vocab_size, end_token="<|endoftext|>"):
     texts = input_text.split(end_token)
@@ -98,18 +95,8 @@ class BPETokenizer:
                     all_ids.extend(ids)
         return all_ids
 
-sample_text = "Say hello! Why hello? Just hello.<|endoftext|>Good morning!"
-
-merge_rules = train_bpe(sample_text, vocab_size=270)
-tokenizer = BPETokenizer(merge_rules)
-
-text = "Say hello!"
-ids = tokenizer.encode(text)
-decoded = tokenizer.decode(ids)
-
-print(ids)
-print(decoded)
-print()
-
-for token_id in ids:
-    print(f"{token_id} -> '{tokenizer.decode([token_id])}'")
+    @staticmethod
+    def load_from(filepath):
+        with open(filepath, "rb") as f:
+            merge_rules = pickle.load(f)
+        return BPETokenizer(merge_rules)

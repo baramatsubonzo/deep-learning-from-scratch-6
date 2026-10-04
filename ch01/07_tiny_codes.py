@@ -1,0 +1,14 @@
+import os, sys
+import pickle
+
+os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.append('.')
+
+from codebot.tokenizer import train_bpe
+
+vocab_size = 1000
+text = open("codebot/tiny_codes.txt").read()
+merge_rules = train_bpe(text, vocab_size)
+
+with open("merge_rules.pkl", "wb") as f:
+    pickle.dump(merge_rules, f)
