@@ -43,7 +43,7 @@ class SFTDataset(Dataset):
             ids = ids + [0] * pad_len
             labels = labels + [-100] * pad_len
         elif pad_len < 0:
-            ids = ids[:self.contet_len]
+            ids = ids[:self.context_len]
             labels = labels[:self.context_len]
 
         return ids, labels
