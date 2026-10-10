@@ -32,11 +32,80 @@ def pretokenize(text):
     pattern = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
     return re.findall(pattern, text)
 
+def find_chunk_boundaries(file_path, num_chunks, end_token="<|endoftext|>"):
+    byte_end_token = end_token.encode("utf-8")
+
+    with open(file_path, "rb") as file:  # ファイルをバイナリモードで開く
+        # ファイルサイズを取得
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)
+
+        chunk_size = file_size // num_chunks
+
+        # チャンクの開始位置を計算（等間隔）
+        chunk_boundaries = [i * chunk_size for i in range(num_chunks)]
+        chunk_boundaries.append(file_size)  # 最後にファイル終端を追加
+
+        buffer_size = 4096  # 境界から先読みするバイト数
+
+        # 境界位置の調整（終了トークンを探す）
+        for bi in range(1, len(chunk_boundaries) - 1):
+            chunk_position = chunk_boundaries[bi]
+            file.seek(chunk_position)  # 境界の推定位置から開始
+
+            while True:
+                buffer = file.read(buffer_size)  # バッファサイズ分を読む
+
+                # ファイル終端に達した場合
+                if buffer == b"":
+                    chunk_boundaries[bi] = file_size
+                    break
+
+                # 読み取ったチャンクで終了トークンを検索
+                end_position = buffer.find(byte_end_token)
+                if end_position != -1:
+                    # 見つかった場合、その位置を新しい境界とする
+                    chunk_boundaries[bi] = chunk_position + end_position
+                    break
+
+                # 見つからなかった場合、次のバッファ位置に移動
+                chunk_position += buffer_size
+
+    # 重複を除去し、ソートして返す
+    return sorted(set(chunk_boundaries))
 
 def train_bpe(input_text, vocab_size, end_token="<|endoftext|>"):
-    texts = input_text.split(end_token)
+    chunk_boundaries = find_chunk_boundaries(file_path, num_chunks=64)
 
     pretoken_counts = defaultdict(int)
+    with open(file_path, "rb") as f:
+        total_chunks = len(chunk_boundaries) - 1
+
+        for i in tqdm(range(total_chunks), desc="Pretokenizing"):
+            start = chunk_boundaries[i]
+            end = chunk_boundaries[i+1]
+
+            f.seek(start)
+            chunk_byte = f.read(end - start)
+            chunk_text = chunk_byte.decode("utf-8", errors="ignore")
+
+            texts = chunk_text.split(end_token)
+            for text in texts:
+                for pretoken in pretokenize(text):
+                    pretoken_counts[pretoken] += 1
+
+    ids_counts = {
+        tuple(pretoken.encode("utf-8")): count
+        for pretoken, count in pretoken_counts.items()
+    }
+
+    num_merges = vocab_size - 256 - 1
+    merge_rules = {}
+    pair_to_ids = defaultdict(set)
+
+    pair_counts = defaultdict(int)
+
     for text in tqdm(texts, desc="Pretokenizing"):
         for pretoken in pretokenize(text):
             pretoken_counts[pretoken] += 1
@@ -92,8 +161,3 @@ vocab_size = 1000
 file_path = "codebot/tiny_codes.txt"
 text = open(file_path).read()
 merge_rules = train_bpe(text, vocab_size)
-
-# vocab_size = 10000
-# file_path = "codebot/tiny_stories_train.txt"
-# text = open(file_path).read()
-# merge_rules = train_bpe(text, vocab_size)
