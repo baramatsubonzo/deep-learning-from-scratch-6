@@ -1,4 +1,8 @@
-storybot/tiny_stories_train.txt
-storybot/tiny_stories_valid.txt
-storybot/tiny_stories_train.bin
-storybot/tiny_stories_valid.bin
+storybot/*.txt
+storybot/*.bin
+storybot/*.pt
+
+/loss_*.png
+
+__pycache__/
+*.pyc
