@@ -9,7 +9,7 @@ from storybot.utils import get_device, generate
 
 device = get_device()
 tokenizer = BPETokenizer.load_from('storybot/merge_rules.pkl')
-model = GPT.load_from('storybot/model_pretrain.pt', device = device)
+model = GPT.load_from('storybot/model_dpo.pt', device = device)
 
 prompt = "<|endoftext|>"
 max_new_tokens = 300
